@@ -1,13 +1,25 @@
-FROM node:14.0.0-alpine3.11 as build-stage
+FROM node:lts-alpine
 
+# 静的コンテンツを配信するシンプルな http サーバをインストールする
+RUN npm install -g http-server
+
+# カレントワーキングディレクトリとして 'app' フォルダを指定する
 WORKDIR /app
-COPY app/mushiking/package*.json ./
+
+# package.json と package-lock.json （あれば）を両方コピーする
+COPY package*.json ./
+
+# プロジェクトの依存ライブラリをインストールする
 RUN npm install
-COPY app/mushiking/ ./
+
+# npmの仮想マシン上でのRAM不足エラー対策として
+RUN npm set strict-ssl false
+
+# カレントワーキングディレクトリ(つまり 'app' フォルダ)にプロジェクトのファイルやフォルダをコピーする
+COPY . .
+
+# 本番向けに圧縮しながらアプリケーションをビルドする
 RUN npm run build
 
-FROM nginx:1.17.10-alpine as production-stage
-
-RUN mkdir /app
-COPY --from=build-stage /app/dist /app
-COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 8080
+CMD [ "http-server", "dist" ]
